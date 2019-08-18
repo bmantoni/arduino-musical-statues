@@ -1,3 +1,5 @@
+#include <Adafruit_NeoPixel.h>
+
 #include "SoftwareSerial.h"
 SoftwareSerial softSerial(10, 11);
 # define Start_Byte 0x7E
@@ -13,12 +15,14 @@ SoftwareSerial softSerial(10, 11);
 # define BUTTON_PLAY 3
 # define DEFAULT_VOLUME 30
 
-# define NUM_LEDS 25
+# define LED_PIN 5
+# define LED_COUNT 25
 
 //int BUTTON_PLAY = 3;
 
 boolean isPlaying = false;
 
+Adafruit_NeoPixel leds = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup () {
   Serial.begin(9600);
@@ -34,6 +38,8 @@ void setup () {
   delay(1000);
   playFirst();
   isPlaying = true;
+
+  startLEDs();
 }
 
 void loop () { 
@@ -44,18 +50,36 @@ void loop () {
   waitToStart();
 }
 
+void startLEDs() {
+  leds.begin();  // Call this to start up the LED strip.
+  clearLEDs();   // This function, defined below, turns all LEDs off...
+  leds.show();   // ...but the LEDs don't actually update until you call this.
+}
+
+void clearLEDs() {
+  setAllLeds(0, 0, 0);
+}
+
+void setAllLeds(int r, int g, int b) {
+  for (int i=0; i<LED_COUNT; i++)
+  {
+    leds.setPixelColor(i, r, g, b);
+  }
+  leds.show();
+}
+
 void freeze() {
+  doFreezeLights();
   pause();
   isPlaying = false;
-  doFreezeLights();
 }
 
 void doFreezeLights() {
-  
+  setAllLeds(255, 0, 0);
 }
 
 void doUnFreezeLights() {
-  
+  setAllLeds(0, 255, 0);
 }
 
 void waitToFreeze() {
@@ -74,13 +98,13 @@ void waitToStart() {
 
 void unfreeze() {
   if (isPlaying) {
+    doUnFreezeLights();
     pause();
     isPlaying = false;
   } else {
     isPlaying = true;
     play();
   }
-  doUnFreezeLights();
 }
 
 void playFirst()
