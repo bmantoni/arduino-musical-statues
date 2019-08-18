@@ -13,7 +13,8 @@ SoftwareSerial softSerial(10, 11);
 # define MIN_WAIT 5
 # define MAX_WAIT 10
 # define BUTTON_PLAY 3
-# define DEFAULT_VOLUME 30
+# define DEFAULT_VOLUME 22
+# define NUM_SONGS 4
 
 # define LED_PIN 5
 # define LED_COUNT 25
@@ -36,7 +37,7 @@ void setup () {
   digitalWrite(BUTTON_PLAY, HIGH);
 
   delay(1000);
-  playFirst();
+  playRandomSong();
   isPlaying = true;
 
   startLEDs();
@@ -61,8 +62,7 @@ void clearLEDs() {
 }
 
 void setAllLeds(int r, int g, int b) {
-  for (int i=0; i<LED_COUNT; i++)
-  {
+  for (int i=0; i<LED_COUNT; i++) {
     leds.setPixelColor(i, r, g, b);
   }
   leds.show();
@@ -98,17 +98,23 @@ void waitToStart() {
 
 void unfreeze() {
   if (isPlaying) {
-    doUnFreezeLights();
     pause();
     isPlaying = false;
   } else {
+    doUnFreezeLights();
     isPlaying = true;
     play();
   }
 }
 
-void playFirst()
-{
+void playRandomSong() {
+  long skipSongs = random(1, NUM_SONGS - 1);
+  for (int i = 0; i < skipSongs; i++) {
+    playNext();
+  }
+}
+
+void playFirst() {
   execute_CMD(0x3F, 0, 0);
   delay(500);
   setVolume(DEFAULT_VOLUME);
@@ -117,38 +123,32 @@ void playFirst()
   delay(500);
 }
 
-void pause()
-{
+void pause() {
   execute_CMD(0x0E,0,0);
   delay(500);
 }
 
-void play()
-{
+void play() {
   execute_CMD(0x0D,0,1); 
   delay(500);
 }
 
-void playNext()
-{
+void playNext() {
   execute_CMD(0x01,0,1);
   delay(500);
 }
 
-void playPrevious()
-{
+void playPrevious() {
   execute_CMD(0x02,0,1);
   delay(500);
 }
 
-void setVolume(int volume)
-{
+void setVolume(int volume) {
   execute_CMD(0x06, 0, volume); // Set the volume (0x00~0x30)
   delay(2000);
 }
 
-void execute_CMD(byte CMD, byte Par1, byte Par2)
-{
+void execute_CMD(byte CMD, byte Par1, byte Par2) {
   // Calculate the checksum (2 bytes)
   word checksum = -(Version_Byte + Command_Length + CMD + Acknowledge + Par1 + Par2);
   // Build the command line
