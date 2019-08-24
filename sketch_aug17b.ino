@@ -1,6 +1,7 @@
 #include <Adafruit_NeoPixel.h>
-
+#include <math.h>
 #include "SoftwareSerial.h"
+
 SoftwareSerial softSerial(10, 11);
 # define Start_Byte 0x7E
 # define Version_Byte 0xFF
@@ -10,16 +11,23 @@ SoftwareSerial softSerial(10, 11);
 
 # define ACTIVATED LOW
 
+// Music /////////////////
 # define MIN_WAIT 5
 # define MAX_WAIT 10
 # define BUTTON_PLAY 3
-# define DEFAULT_VOLUME 22
+# define DEFAULT_VOLUME 30
 # define NUM_SONGS 4
 
+// Lights ////////////////
 # define LED_PIN 5
 # define LED_COUNT 25
 
-//int BUTTON_PLAY = 3;
+// Motion ////////////////
+# define WATCH_TIME 5
+# define PIR_PIN 2
+int pirState = LOW;
+int motionDetected = 0;
+int watchingPhaseDone = 0;
 
 boolean isPlaying = false;
 
@@ -36,6 +44,8 @@ void setup () {
   pinMode(BUTTON_PLAY, INPUT);
   digitalWrite(BUTTON_PLAY, HIGH);
 
+  pinMode(PIR_PIN, INPUT);
+
   delay(1000);
   playRandomSong();
   isPlaying = true;
@@ -51,6 +61,25 @@ void loop () {
   waitToStart();
 }
 
+void checkForMotion(){
+  Serial.println("Checking for motion...");
+  int val = digitalRead(PIR_PIN);
+  if (val == HIGH) {
+    if (pirState == LOW) {
+      // we have just turned on
+      Serial.println("Motion detected!");
+      pirState = HIGH;
+      motionDetected = 1;
+    }
+  } else {
+    if (pirState == HIGH){
+      // we have just turned of
+      Serial.println("Motion ended!");
+      pirState = LOW;
+    }
+  }
+}
+
 void startLEDs() {
   leds.begin();  // Call this to start up the LED strip.
   clearLEDs();   // This function, defined below, turns all LEDs off...
@@ -59,6 +88,29 @@ void startLEDs() {
 
 void clearLEDs() {
   setAllLeds(0, 0, 0);
+}
+
+int showOdd = 0;
+
+void setAlternatingLeds(int r, int g, int b) {
+  for (int i = 0; i < LED_COUNT; i++) {
+    if ((i % 2) == 0) {
+      if (showOdd == 0) {
+        leds.setPixelColor(i, r, g, b);
+      } else { 
+        leds.setPixelColor(i, 0, 0, 0);
+      }
+    } else {
+      if (showOdd == 1) {
+        leds.setPixelColor(i, r, g, b);
+      } else { 
+        leds.setPixelColor(i, 0, 0, 0);
+      }
+    }
+  }
+  leds.show();
+  Serial.println(showOdd);
+  showOdd = ( showOdd == 0 ) ? 1 : 0;
 }
 
 void setAllLeds(int r, int g, int b) {
@@ -79,7 +131,8 @@ void doFreezeLights() {
 }
 
 void doUnFreezeLights() {
-  setAllLeds(0, 255, 0);
+  //setAllLeds(0, 255, 0);
+  clearLEDs();
 }
 
 void waitToFreeze() {
@@ -89,10 +142,47 @@ void waitToFreeze() {
 }
 
 void waitToStart() {
+  // first, wait a random amount of time T with red light, checking for motion
+  if (watchingPhaseDone == 0) {
+    waitForImWatchingYouPhase();
+    watchingPhaseDone = 1;
+  }
+  // after either nobody moves after T, or someone moves, continue
+  clearLEDs();
   Serial.println("checking if play button pressed");
   if (digitalRead(BUTTON_PLAY) == ACTIVATED) {
     Serial.println("Play button pressed");
     unfreeze();
+    watchingPhaseDone = 0;
+  }
+}
+
+// return true if someone moved? false if not
+void waitForImWatchingYouPhase() {
+  clearLEDs();
+  uint32_t waitTimeMillis = WATCH_TIME * 1000L;
+  for (uint32_t tStart = millis(); (millis()-tStart) < waitTimeMillis;) {
+    checkForMotion();
+    if (motionDetected == 1) {
+      blinkXTimes(3, 255, 0, 0);
+      motionDetected = 0;
+      return;
+    }
+    // do watching animation
+    if ( floor(log10(millis() - tStart)) == 3 ) {
+      setAlternatingLeds(255, 255, 0);
+    }
+  }
+  // nobody moved!
+  blinkXTimes(3, 0, 255, 0);
+}
+
+void blinkXTimes(int count, int r, int g, int b) {
+  for (int i = 0; i < count; ++i) {
+    delay(500);
+    setAllLeds(r, g, b);
+    delay(500);
+    setAllLeds(0, 0, 0);
   }
 }
 
