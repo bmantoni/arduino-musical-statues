@@ -15,8 +15,10 @@ SoftwareSerial softSerial(10, 11);
 # define MIN_WAIT 5
 # define MAX_WAIT 10
 # define BUTTON_PLAY 3
-# define DEFAULT_VOLUME 30
-# define NUM_SONGS 4
+# define DEFAULT_VOLUME 15
+# define NUM_SONGS 8
+# define STOP_SONG 1
+# define GO_SONG 2
 
 // Lights ////////////////
 # define LED_PIN 5
@@ -30,7 +32,7 @@ int motionDetected = 0;
 int watchingPhaseDone = 0;
 
 boolean isPlaying = false;
-
+int currentSong = 0;
 Adafruit_NeoPixel leds = Adafruit_NeoPixel(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 void setup () {
@@ -47,7 +49,9 @@ void setup () {
   pinMode(PIR_PIN, INPUT);
 
   delay(1000);
+  initMusic();
   playRandomSong();
+  //playStopSound();
   isPlaying = true;
 
   startLEDs();
@@ -62,7 +66,7 @@ void loop () {
 }
 
 void checkForMotion(){
-  Serial.println("Checking for motion...");
+  //Serial.println("Checking for motion...");
   int val = digitalRead(PIR_PIN);
   if (val == HIGH) {
     if (pirState == LOW) {
@@ -122,8 +126,15 @@ void setAllLeds(int r, int g, int b) {
 
 void freeze() {
   doFreezeLights();
+  playSong(STOP_SONG);
   pause();
   isPlaying = false;
+}
+
+void playSong(int num) {
+  execute_CMD(0x03, 0, num);
+  play();
+  delay(500);  
 }
 
 void doFreezeLights() {
@@ -149,7 +160,7 @@ void waitToStart() {
   }
   // after either nobody moves after T, or someone moves, continue
   clearLEDs();
-  Serial.println("checking if play button pressed");
+  //Serial.println("checking if play button pressed");
   if (digitalRead(BUTTON_PLAY) == ACTIVATED) {
     Serial.println("Play button pressed");
     unfreeze();
@@ -191,25 +202,35 @@ void unfreeze() {
     pause();
     isPlaying = false;
   } else {
+    playSong(GO_SONG);
     doUnFreezeLights();
     isPlaying = true;
-    play();
+    //play();
+    resumeCurrentSong();
+    //play();
+    delay(500);
   }
 }
 
+void resumeCurrentSong() {
+  playSong(currentSong);
+}
+
 void playRandomSong() {
-  long skipSongs = random(1, NUM_SONGS - 1);
+  long skipSongs = random(2, NUM_SONGS - 1); // first 2 songs are special sounds
+  currentSong = skipSongs + 1;
+  Serial.println((String)"Setting currentSong to " + currentSong);
   for (int i = 0; i < skipSongs; i++) {
     playNext();
   }
 }
 
-void playFirst() {
-  execute_CMD(0x3F, 0, 0);
-  delay(500);
+void initMusic() {
+  //execute_CMD(0x3F, 0, 0);
+  //delay(500);
   setVolume(DEFAULT_VOLUME);
   delay(500);
-  execute_CMD(0x11,0,1); 
+  execute_CMD(0x11,0,0); 
   delay(500);
 }
 
