@@ -12,13 +12,14 @@ SoftwareSerial softSerial(10, 11);
 # define ACTIVATED LOW
 
 // Music /////////////////
-# define MIN_WAIT 5
-# define MAX_WAIT 10
+# define MIN_WAIT 10       // for testing, 5
+# define MAX_WAIT 30       // for testing, 5
 # define BUTTON_PLAY 3
-# define DEFAULT_VOLUME 15
+# define DEFAULT_VOLUME 30 // for testing, 15
 # define NUM_SONGS 8
 # define STOP_SONG 1
 # define GO_SONG 2
+# define SAWYOU_SONG 3
 
 // Lights ////////////////
 # define LED_PIN 5
@@ -175,6 +176,7 @@ void waitForImWatchingYouPhase() {
   for (uint32_t tStart = millis(); (millis()-tStart) < waitTimeMillis;) {
     checkForMotion();
     if (motionDetected == 1) {
+      playSong(SAWYOU_SONG);
       blinkXTimes(3, 255, 0, 0);
       motionDetected = 0;
       return;
@@ -217,7 +219,7 @@ void resumeCurrentSong() {
 }
 
 void playRandomSong() {
-  long skipSongs = random(2, NUM_SONGS - 1); // first 2 songs are special sounds
+  long skipSongs = random(3, NUM_SONGS - 1); // first 2 songs are special sounds
   currentSong = skipSongs + 1;
   Serial.println((String)"Setting currentSong to " + currentSong);
   for (int i = 0; i < skipSongs; i++) {
